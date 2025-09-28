@@ -4,7 +4,7 @@ Dictionary<string, Func<ICommand>> CommandsMap = new ()
 {
     ["init"] = () => new InitCommand(),
     ["cat-file"] = () => new CatFileCommand(),
-    ["hash-object"] = () => new HashObjectCommand(),
+    ["hash-object"] = () => new HashObjectCommand()
 }; 
 
 if (args.Length < 1)
