@@ -12,6 +12,9 @@ public class ListTreeCommand : ICommand
         //     <mode> <name>\0<20_byte_sha>
         //     <mode> <name>\0<20_byte_sha>
         
+        var flag = args[1];
+        var hash = args[2];
+        
         var gitObjectHash = args[2];
         var gitObjectDir = gitObjectHash[..2];
         var gitObjectName = gitObjectHash[2..];
