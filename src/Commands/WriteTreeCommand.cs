@@ -70,8 +70,6 @@ public class WriteTreeCommand : ICommand
         var blobEntries = new List<byte>();
         foreach (var file in Directory.GetFiles(directory))
         {
-            Console.WriteLine("Processing File: " + file);
-            
             var fileBlobContent = HashObjectCommand.GetBlobPayload(file);
             var fileHash = HashObjectCommand.CompressObject(fileBlobContent);
             var blobEntry = MakeEntry(fileHash, Path.GetFileName(file));
