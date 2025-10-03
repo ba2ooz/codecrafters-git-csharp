@@ -18,26 +18,44 @@ public class HashObjectCommand : ICommand
         var flag = args[1];
         var filePath = args[2];
         
-        var fileContent = File.ReadAllText(filePath);
+        var blobContentByte = GetBlobPayload(filePath);
+        var hashHex = CompressObject(blobContentByte, flag == "-w");
+
+        Console.WriteLine(hashHex);
+    }
+
+    public static byte[] GetBlobPayload(string path)
+    {
+        var fileContent = File.ReadAllText(path);
         var blobContent = $"blob {fileContent.Length}\0{fileContent}";
         var blobContentByte = Encoding.UTF8.GetBytes(blobContent);
-        var blobHash = SHA1.Create().ComputeHash(blobContentByte);
-        var hashHex = BitConverter.ToString(blobHash).Replace("-", "").ToLowerInvariant();
+        
+        return blobContentByte;
+    } 
+    public static string CompressObject(byte[] payload, bool save = true)
+    {
+        var objectHash = SHA1.Create().ComputeHash(payload);
+        var hashHex = BitConverter.ToString(objectHash).Replace("-", "").ToLowerInvariant();
 
-        if (flag == "-w")
+        if (save)
         {
-            var dirToWriteTo = $".git/objects/{hashHex[..2]}";
-            var fileToWriteTo = $"{dirToWriteTo}/{hashHex[2..]}";
-            if (!Directory.Exists(dirToWriteTo))
-                Directory.CreateDirectory(dirToWriteTo);
-                
-            using var blobStream = new MemoryStream(blobContentByte);
-            using var fileWriter = File.OpenWrite(fileToWriteTo);
+            var writeToPath = EnsurePath(hashHex);
+            using var fileWriter = File.OpenWrite(writeToPath);
             using var compressedBlobContent = new ZLibStream(fileWriter, CompressionMode.Compress);
+            using var blobStream = new MemoryStream(payload);
             blobStream.CopyTo(compressedBlobContent);
         }
         
-        Console.WriteLine(hashHex);
-        // Console.WriteLine(hashHex.Length);
+        return hashHex;
+    }
+    
+    public static string EnsurePath(string hash)
+    {
+        var dirToWriteTo = $".git/objects/{hash[..2]}";
+        var fileToWriteTo = $"{dirToWriteTo}/{hash[2..]}";
+        if (!Directory.Exists(dirToWriteTo))
+            Directory.CreateDirectory(dirToWriteTo);
+        
+        return fileToWriteTo;
     }
 }
