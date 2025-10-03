@@ -4,6 +4,9 @@ namespace codecrafters_git.Commands;
 
 public class WriteTreeCommand : ICommand
 {
+    private const string TreeType = "40000";
+    private const string BlobType = "100644";
+    
     public void Run(string[] args)
     {
         var stagingArea = Directory.GetCurrentDirectory();
@@ -18,70 +21,92 @@ public class WriteTreeCommand : ICommand
         if (Path.GetFileName(directory).StartsWith(".git"))
             return [];
 
-        var treeEntries = new List<byte>();
-        foreach (var dir in  Directory.GetDirectories(directory))
-        {
-            var treeBytes = MakeTree(dir); 
-            if (treeBytes.Length == 0)
-                continue;
-            
-            var treeHash = HashObjectCommand.CompressObject(treeBytes); 
-            var treeEntry = MakeEntry(treeHash, Path.GetFileName(dir));
-            treeEntries.AddRange(treeEntry);
-        }
-
-        // add blob entries
-        var blobEntries = GetTreeBlobs(directory);
-        treeEntries.AddRange(blobEntries);
-
-        // if directory is empty, return
-        if (treeEntries.Count == 0)
+        var childrenTrees = GetTreeChildrenTrees(directory);
+        var childrenBlobs = GetTreeChildrenBlobs(directory);
+        var children = childrenTrees.Concat(childrenBlobs);
+        var sortedEntries = new SortedSet<TreeEntry>(children);
+       
+        // no entries, directory is empty, return
+        if (sortedEntries.Count == 0)
             return [];
+
+        var treeContent = GetRawTreeEntries(sortedEntries);
+        var treePayload = GetRawTreePayload(treeContent);
         
-        // prepend the header
-        var treeHeader = MakeHeader(treeEntries.Count);
-        treeHeader.AddRange(treeEntries);
-        treeEntries = treeHeader;
-        
-        return treeEntries.ToArray();
+        return treePayload;
     }
 
-    private List<byte> MakeHeader(int contentSize)
+    private List<byte> GetRawTreeEntries(SortedSet<TreeEntry> treeEntries)
     {
+        var content = new List<byte>();
+        foreach (var entry in treeEntries)
+            content.AddRange(GetRawEntry(entry));
+        
+        return content;
+    }
+
+    private byte[] GetRawTreePayload(List<byte> treeEntries)
+    {
+        var treeHeader = GetRawHeader(treeEntries.Count);
+        var tree = new List<byte>();
+        tree.AddRange(treeHeader);
+        tree.AddRange(treeEntries);
+        
+        return tree.ToArray();
+    }
+    
+    private List<byte> GetRawHeader(int contentSize)
+    {
+        var headerSize = $"tree {contentSize}";
+        var header = Encoding.ASCII.GetBytes(headerSize);
+        
         var headerBytes = new List<byte>();
-        headerBytes.AddRange(Encoding.ASCII.GetBytes($"tree {contentSize.ToString()}"));
+        headerBytes.AddRange(header);
         headerBytes.Add(0);
         
         return headerBytes;
     }
-
-    private List<byte> MakeEntry(string entryHash, string entryName)
+    
+    private List<byte> GetRawEntry(TreeEntry treeEntry)
     {
+        var entryModeName = $"{treeEntry.Type} {treeEntry.Name}";
+        var byteModeName = Encoding.ASCII.GetBytes(entryModeName);
+        var byteEntryHash = Convert.FromHexString(treeEntry.Hash);
+        
         var entryBytes = new List<byte>();
-        entryBytes.AddRange(Encoding.ASCII.GetBytes($"{GetEntryType(entryName)}"));
+        entryBytes.AddRange(byteModeName);
         entryBytes.Add(0);
-        entryBytes.AddRange(Convert.FromHexString(entryHash));
+        entryBytes.AddRange(byteEntryHash);
 
         return entryBytes;
     }
 
-    private List<byte> GetTreeBlobs(string directory)
+    private List<TreeEntry> GetTreeChildrenTrees(string directory)
     {
-        var blobEntries = new List<byte>();
+        var treeEntries = new List<TreeEntry>();
+        foreach (var dir in  Directory.GetDirectories(directory))
+        {
+            var treeBytes = MakeTree(dir);
+            if (treeBytes.Length == 0) continue;
+            var treeHash = HashObjectCommand.CompressObject(treeBytes); 
+            var treeEntry = new TreeEntry(TreeType, treeHash, Path.GetFileName(dir));
+            treeEntries.Add(treeEntry);
+        }
+        
+        return treeEntries;
+    }
+    
+    private List<TreeEntry> GetTreeChildrenBlobs(string directory)
+    {
+        var blobEntries = new List<TreeEntry>();
         foreach (var file in Directory.GetFiles(directory))
         {
             var fileBlobContent = HashObjectCommand.GetBlobPayload(file);
             var fileHash = HashObjectCommand.CompressObject(fileBlobContent);
-            var blobEntry = MakeEntry(fileHash, Path.GetFileName(file));
-            blobEntries.AddRange(blobEntry);
+            var blobEntry = new TreeEntry(BlobType, fileHash, Path.GetFileName(file));
+            blobEntries.Add(blobEntry);
         }
         
-        return  blobEntries;
+        return blobEntries;
     }
-
-    private string GetEntryType(string entryName) => entryName.Contains('.') switch
-    {
-        false => $"40000 {entryName}",
-        true => $"100644 {entryName}",
-    };
 }

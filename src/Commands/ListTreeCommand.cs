@@ -5,12 +5,6 @@ namespace codecrafters_git.Commands;
 
 public class ListTreeCommand : ICommand
 {
-    private record TreeEntry(string Type, string Hash, string Name) : IComparable<TreeEntry>
-    {
-        public int CompareTo(TreeEntry? entry) => 
-            string.Compare(Name, entry?.Name, StringComparison.OrdinalIgnoreCase);
-    }; 
-    
     private const byte SpaceByte = (byte)' ';
     private const byte NullByte = 0;
     private const int ByteHashLength = 20;
