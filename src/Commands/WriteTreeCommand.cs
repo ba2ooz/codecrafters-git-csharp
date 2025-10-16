@@ -45,17 +45,18 @@ public class WriteTreeCommand : ICommand
         return content;
     }
 
-    private byte[] GetRawTreePayload(List<byte> treeEntries)
+    public static byte[] GetRawTreePayload(IEnumerable<byte> treeEntries)
     {
-        var treeHeader = GetRawHeader(treeEntries.Count);
+        var entries = treeEntries.ToList();
+        var treeHeader = GetRawHeader(entries.Count);
         var tree = new List<byte>();
         tree.AddRange(treeHeader);
-        tree.AddRange(treeEntries);
+        tree.AddRange(entries);
         
         return tree.ToArray();
     }
     
-    private List<byte> GetRawHeader(int contentSize)
+    private static List<byte> GetRawHeader(int contentSize)
     {
         var headerSize = $"tree {contentSize}";
         var header = Encoding.ASCII.GetBytes(headerSize);
@@ -101,9 +102,10 @@ public class WriteTreeCommand : ICommand
         var blobEntries = new List<TreeEntry>();
         foreach (var file in Directory.GetFiles(directory))
         {
-            var fileBlobContent = HashObjectCommand.GetBlobPayload(file);
-            var fileHash = HashObjectCommand.CompressObject(fileBlobContent);
-            var blobEntry = new TreeEntry(BlobType, fileHash, Path.GetFileName(file));
+            var blobContent = File.ReadAllText(file);
+            var rawBlobContent = HashObjectCommand.GetRawBlob(blobContent); 
+            var blobHash = HashObjectCommand.CompressObject(rawBlobContent);
+            var blobEntry = new TreeEntry(BlobType, blobHash, Path.GetFileName(file));
             blobEntries.Add(blobEntry);
         }
         

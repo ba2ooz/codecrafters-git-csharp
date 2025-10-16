@@ -86,7 +86,7 @@ public class ListTreeCommand : ICommand
     {
         var directory = objectHash[..2];
         var fileName = objectHash[2..];
-        return $".git/objects/{directory}/{fileName}";
+        return $"{RepoInfo.RootDirectory}/.git/objects/{directory}/{fileName}";
     }
 
     private string GetObjectType(string mode) => mode switch
@@ -108,5 +108,32 @@ public class ListTreeCommand : ICommand
         
         foreach (var entry in entries)
             Console.WriteLine($"{entry.Type} {entry.Hash}\t{entry.Name}");
+    }
+    
+    public void SaveTreeRecursively(string dir, string hash)
+    {
+        Console.WriteLine();
+        Console.WriteLine("current tree: " + hash);
+        Run(["", "-p", hash]);
+        
+        var path = GetObjectPath(hash);
+        var treeEntries = ReadStreamTreeEntries(path);
+        foreach (var entry in treeEntries)
+        {
+            if (!entry.Type.Contains("tree"))
+            {
+                Console.WriteLine("paths: " + $"{dir}/{entry.Name}");
+                var blobContent = CatFileCommand.DecompressFile(entry.Hash).Split('\0')[1];    // get the content part
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+                
+                File.WriteAllText(Path.Combine(dir, entry.Name), blobContent);
+            }
+            else
+            {
+                var subdir = Path.Combine(dir, entry.Name);
+                SaveTreeRecursively(subdir, entry.Hash);
+            }
+        }
     }
 }

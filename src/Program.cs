@@ -8,6 +8,7 @@ Dictionary<string, Func<ICommand>> CommandsMap = new ()
     ["ls-tree"] = () => new ListTreeCommand(),
     ["write-tree"] = () => new WriteTreeCommand(),
     ["commit-tree"] = () => new WriteCommitCommand(),
+    ["clone"] = () => new CloneCommand(),
 }; 
 
 if (args.Length < 1)

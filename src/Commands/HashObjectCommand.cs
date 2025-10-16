@@ -18,40 +18,40 @@ public class HashObjectCommand : ICommand
         var flag = args[1];
         var filePath = args[2];
         
-        var blobContentByte = GetBlobPayload(filePath);
-        var hashHex = CompressObject(blobContentByte, flag == "-w");
+        var fileContent = File.ReadAllText(filePath);
+        var rawBlobContent = GetRawBlob(fileContent); 
+        var hashHex = CompressObject(rawBlobContent, flag == "-w");
 
         Console.WriteLine(hashHex);
     }
 
-    public static byte[] GetBlobPayload(string path)
-    {
-        var fileContent = File.ReadAllText(path);
-        var blobContent = $"blob {fileContent.Length}\0{fileContent}";
+    public static byte[] GetRawBlob(string content)
+    { 
+        var blobContent = $"blob {content.Length}\0{content}";
         var blobContentByte = Encoding.UTF8.GetBytes(blobContent);
-        
         return blobContentByte;
-    } 
+    }
+    
     public static string CompressObject(byte[] payload, bool save = true)
     {
-        var objectHash = SHA1.Create().ComputeHash(payload);
-        var hashHex = BitConverter.ToString(objectHash).Replace("-", "").ToLowerInvariant();
+        var objectHash = SHA1.HashData(payload);
+        var hashHex = Convert.ToHexStringLower(objectHash);
 
-        if (save)
-        {
-            var writeToPath = EnsurePath(hashHex);
-            using var fileWriter = File.OpenWrite(writeToPath);
-            using var compressedBlobContent = new ZLibStream(fileWriter, CompressionMode.Compress);
-            using var blobStream = new MemoryStream(payload);
-            blobStream.CopyTo(compressedBlobContent);
-        }
+        if (!save) 
+            return hashHex;
         
+        var writeToPath = EnsurePath(hashHex);
+        using var fileWriter = File.OpenWrite(writeToPath);
+        using var compressedBlobContent = new ZLibStream(fileWriter, CompressionMode.Compress);
+        using var blobStream = new MemoryStream(payload);
+        blobStream.CopyTo(compressedBlobContent);
+
         return hashHex;
     }
     
     public static string EnsurePath(string hash)
     {
-        var dirToWriteTo = $".git/objects/{hash[..2]}";
+        var dirToWriteTo = $"{RepoInfo.RootDirectory}/.git/objects/{hash[..2]}";
         var fileToWriteTo = $"{dirToWriteTo}/{hash[2..]}";
         if (!Directory.Exists(dirToWriteTo))
             Directory.CreateDirectory(dirToWriteTo);
