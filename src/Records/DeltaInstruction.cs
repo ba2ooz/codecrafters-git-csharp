@@ -1,4 +1,4 @@
-namespace codecrafters_git.Commands.Delta.Records;
+namespace codecrafters_git.Records;
 
 public abstract record DeltaInstruction();
 

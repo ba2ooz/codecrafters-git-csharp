@@ -1,100 +1,19 @@
-using System.IO.Compression;
-using System.Text;
+using codecrafters_git.Abstractions;
+using codecrafters_git.Objects;
+using codecrafters_git.Records;
 
 namespace codecrafters_git.Commands;
 
-public class ListTreeCommand : ICommand
+public class ListTreeCommand(IRepo repo) : ICommand
 {
-    private const byte SpaceByte = (byte)' ';
-    private const byte NullByte = 0;
-    private const int ByteHashLength = 20;
-   
     public void Run(string[] args)
     {
-        // tree <size>\0
-        //     <mode> <name>\0<20_byte_sha>
-        //     <mode> <name>\0<20_byte_sha>
-        
         var flag = args[1];
         var hash = args[2];
         
-        var path = GetObjectPath(hash);
-        var treeEntries = ReadStreamTreeEntries(path);
+        var treeEntries = GitTreeReader.ReadTreeEntries(repo, hash);
         PrintTreeEntries(treeEntries, flag == "--name-only");
     }
-
-    private SortedSet<TreeEntry> ReadStreamTreeEntries(string objPath)
-    {
-        var entriesSet = new SortedSet<TreeEntry>();
-        using var fs = File.OpenRead(objPath);
-        using var zlib = new ZLibStream(fs, CompressionMode.Decompress);
-        using var br = new BinaryReader(zlib);
-
-        SkipHeader(br);
-        while (TryReadStreamTreeEntry(br, out var treeEntry))
-            entriesSet.Add(treeEntry!);
-        
-        return entriesSet;
-    }
-
-    private bool TryReadStreamTreeEntry(BinaryReader br, out TreeEntry? entry)
-    {
-        try
-        {
-            entry = ReadTreeEntry(br);
-            return true;
-        }
-        catch (EndOfStreamException)
-        {
-            entry = null;
-            return false;
-        }
-    }
-
-    private TreeEntry ReadTreeEntry(BinaryReader br)
-    {
-        var objectType = ReadUntil(br, SpaceByte);
-        var objectName = ReadUntil(br, NullByte);
-        var objectHash = ReadHash(br);
-
-        return new TreeEntry(GetObjectType(objectType), objectHash, objectName);
-    }
-
-    private void SkipHeader(BinaryReader br)
-    {
-        while (br.ReadByte() != NullByte) ;
-    }
-
-    private string ReadUntil(BinaryReader br, byte delimiter)
-    {
-        byte b;
-        var bytesList = new List<byte>();   
-        while ((b = br.ReadByte()) != delimiter)
-            bytesList.Add(b);
-        
-        return Encoding.ASCII.GetString(bytesList.ToArray());
-    }
-
-    private string ReadHash(BinaryReader br)
-    {
-        var hashBytes = br.ReadBytes(ByteHashLength);
-        var hashHex = Convert.ToHexString(hashBytes).ToLowerInvariant();
-        return hashHex;
-    }
-    
-    private string GetObjectPath(string objectHash)
-    {
-        var directory = objectHash[..2];
-        var fileName = objectHash[2..];
-        return $"{RepoInfo.RootDirectory}/.git/objects/{directory}/{fileName}";
-    }
-
-    private string GetObjectType(string mode) => mode switch
-    {
-        "40000" => "040000 tree",
-        "100644" or "100755" or "120000" => $"{mode} blob",
-        _ => throw new InvalidOperationException($"Unknown mode {mode}")
-    };
     
     private void PrintTreeEntries(SortedSet<TreeEntry> entries, bool nameOnly = false)
     {
@@ -107,33 +26,6 @@ public class ListTreeCommand : ICommand
         }
         
         foreach (var entry in entries)
-            Console.WriteLine($"{entry.Type} {entry.Hash}\t{entry.Name}");
-    }
-    
-    public void SaveTreeRecursively(string dir, string hash)
-    {
-        Console.WriteLine();
-        Console.WriteLine("current tree: " + hash);
-        Run(["", "-p", hash]);
-        
-        var path = GetObjectPath(hash);
-        var treeEntries = ReadStreamTreeEntries(path);
-        foreach (var entry in treeEntries)
-        {
-            if (!entry.Type.Contains("tree"))
-            {
-                Console.WriteLine("paths: " + $"{dir}/{entry.Name}");
-                var blobContent = CatFileCommand.DecompressFile(entry.Hash).Split('\0')[1];    // get the content part
-                if (!Directory.Exists(dir))
-                    Directory.CreateDirectory(dir);
-                
-                File.WriteAllText(Path.Combine(dir, entry.Name), blobContent);
-            }
-            else
-            {
-                var subdir = Path.Combine(dir, entry.Name);
-                SaveTreeRecursively(subdir, entry.Hash);
-            }
-        }
+            Console.WriteLine($"{entry.FormattedType} {entry.Hash}\t{entry.Name}");
     }
 }

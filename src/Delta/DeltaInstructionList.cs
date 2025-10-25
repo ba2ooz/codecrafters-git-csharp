@@ -1,7 +1,7 @@
 using System.Collections;
-using codecrafters_git.Commands.Delta.Records;
+using codecrafters_git.Records;
 
-namespace codecrafters_git.Commands.Delta;
+namespace codecrafters_git.Delta;
 
 public class DeltaInstructionList : IEnumerable<DeltaInstruction>
 {
