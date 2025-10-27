@@ -1,59 +1,33 @@
-[![progress-banner](https://backend.codecrafters.io/progress/git/77e86ee7-f32e-4e4f-920c-d7f8b13aee73)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+[![progress-banner](https://backend.codecrafters.io/progress/git/77e86ee7-f32e-4e4f-920c-d7f8b13aee73)](https://codecrafters.io/challenges/git)
 
-This is a starting point for C# solutions to the
-["Build Your Own Git" Challenge](https://codecrafters.io/challenges/git).
+---
 
-In this challenge, you'll build a small Git implementation that's capable of
-initializing a repository, creating commits and cloning a public repository.
-Along the way we'll learn about the `.git` directory, Git objects (blobs,
-commits, trees etc.), Git's transfer protocols and more.
+## Overview
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+This project is my implementation of the **“Build Your Own Git”** challenge from [Codecrafters](https://codecrafters.io/challenges/git).
 
-# Passing the first stage
+It reproduces Git’s core functionality, including:
 
-The entry point for your Git implementation is in `src/Program.cs`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+* **`git init`** - Initialize a new repository with a `.git` directory.
+* **`git cat-file`** - Inspect object content and metadata.
+* **`git hash-object`** - Hash files into Git object format.
+* **`git ls-tree`** - Explore tree structures and file hierarchies.
+* **`git write-tree`** - Build tree objects from the working directory.
+* **`git commit-tree`** - Create commit objects linking trees and parents.
+* **`git clone`** - Clone a repository from a remote server (this one was especially challenging!).
 
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
-```
+> The goal: gain a deep understanding of how Git works under the hood by building it step by step.
 
-That's all!
+---
 
-# Stage 2 & beyond
+## Git Pack File Structure
 
-Note: This section is for stages 2 and beyond.
+While implementing **`git clone`**, I dug into the **Pack file format** - a compact, efficient way Git stores objects. I put together a visual representation to make sense of it and keep it handy for reference:
 
-1. Ensure you have `dotnet (9.0)` installed locally
-1. Run `./your_program.sh` to run your Git implementation, which is implemented
-   in `src/Program.cs`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+🔗 [Open in Excalidraw for full zoomable detail](https://excalidraw.com/#json=KKyM_kdrz2KYSZi9eje8o,SOjy8ajQCPUxh_XBQnVk2A)
 
-# Testing locally
+> If the link doesn’t work, you can also find the `.excalidraw` file in the repo root.
 
-The `your_program.sh` script is expected to operate on the `.git` folder inside
-the current working directory. If you're running this inside the root of this
-repository, you might end up accidentally damaging your repository's `.git`
-folder.
+![git_pack_structure_overview.png](git_pack_structure_overview.png)
 
-We suggest executing `your_program.sh` in a different folder when testing
-locally. For example:
-
-```sh
-mkdir -p /tmp/testing && cd /tmp/testing
-/path/to/your/repo/your_program.sh init
-```
-
-To make this easier to type out, you could add a
-[shell alias](https://shapeshed.com/unix-alias/):
-
-```sh
-alias mygit=/path/to/your/repo/your_program.sh
-
-mkdir -p /tmp/testing && cd /tmp/testing
-mygit init
-```
+---
